@@ -16,6 +16,13 @@ type ToOneRelationship struct {
 	ForeignColumn         string `json:"foreign_column"`
 	ForeignColumnNullable bool   `json:"foreign_column_nullable"`
 	ForeignColumnUnique   bool   `json:"foreign_column_unique"`
+
+// ForeignKeyColumn represents information about a column for a foreign key. It is
+// a subset of a Column struct.
+type ForeignKeyColumn struct {
+	Name     string `json:"column_name"`
+	Nullable bool   `json:"column_nullable"`
+	Unique   bool   `json:"column_unique"`
 }
 
 // ToManyRelationship describes a relationship between two tables where the
