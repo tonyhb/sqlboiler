@@ -10,16 +10,20 @@ type PrimaryKey struct {
 
 // ForeignKey represents a foreign key constraint in a database
 type ForeignKey struct {
-	Table    string `json:"table"`
-	Name     string `json:"name"`
-	Column   string `json:"column"`
-	Nullable bool   `json:"nullable"`
-	Unique   bool   `json:"unique"`
+	Table   string             `json:"table"`
+	Name    string             `json:"name"`
+	Columns []ForeignKeyColumn `json:"columns"`
 
-	ForeignTable          string `json:"foreign_table"`
-	ForeignColumn         string `json:"foreign_column"`
-	ForeignColumnNullable bool   `json:"foreign_column_nullable"`
-	ForeignColumnUnique   bool   `json:"foreign_column_unique"`
+	ForeignTable   string             `json:"foreign_table"`
+	ForeignColumns []ForeignKeyColumn `json:"foreign_columns"`
+}
+
+// ForeignKeyColumn represents information about a column for a foreign key. It is
+// a subset of a Column struct.
+type ForeignKeyColumn struct {
+	Name     string `json:"column_name"`
+	Nullable bool   `json:"column_nullable"`
+	Unique   bool   `json:"column_unique"`
 }
 
 // SQLColumnDef formats a column name and type like an SQL column definition.

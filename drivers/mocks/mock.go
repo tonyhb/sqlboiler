@@ -128,15 +128,15 @@ func (m *MockDriver) Columns(schema, tableName string, whitelist, blacklist []st
 func (m *MockDriver) ForeignKeyInfo(schema, tableName string) ([]drivers.ForeignKey, error) {
 	return map[string][]drivers.ForeignKey{
 		"jets": {
-			{Table: "jets", Name: "jets_pilot_id_fk", Column: "pilot_id", ForeignTable: "pilots", ForeignColumn: "id", ForeignColumnUnique: true},
-			{Table: "jets", Name: "jets_airport_id_fk", Column: "airport_id", ForeignTable: "airports", ForeignColumn: "id"},
+			{Table: "jets", Name: "jets_pilot_id_fk", Columns: []drivers.ForeignKeyColumn{{Name: "pilot_id"}}, ForeignTable: "pilots", ForeignColumns: []drivers.ForeignKeyColumn{{Name: "id", Unique: true}}},
+			{Table: "jets", Name: "jets_airport_id_fk", Columns: []drivers.ForeignKeyColumn{{Name: "airport_id"}}, ForeignTable: "airports", ForeignColumns: []drivers.ForeignKeyColumn{{Name: "id"}}},
 		},
 		"licenses": {
-			{Table: "licenses", Name: "licenses_pilot_id_fk", Column: "pilot_id", ForeignTable: "pilots", ForeignColumn: "id"},
+			{Table: "licenses", Name: "licenses_pilot_id_fk", Columns: []drivers.ForeignKeyColumn{{Name: "pilot_id"}}, ForeignTable: "pilots", ForeignColumns: []drivers.ForeignKeyColumn{{Name: "id"}}},
 		},
 		"pilot_languages": {
-			{Table: "pilot_languages", Name: "pilot_id_fk", Column: "pilot_id", ForeignTable: "pilots", ForeignColumn: "id"},
-			{Table: "pilot_languages", Name: "jet_id_fk", Column: "language_id", ForeignTable: "languages", ForeignColumn: "id"},
+			{Table: "pilot_languages", Name: "pilot_id_fk", Columns: []drivers.ForeignKeyColumn{{Name: "pilot_id"}}, ForeignTable: "pilots", ForeignColumns: []drivers.ForeignKeyColumn{{Name: "id"}}},
+			{Table: "pilot_languages", Name: "jet_id_fk", Columns: []drivers.ForeignKeyColumn{{Name: "language_id"}}, ForeignTable: "languages", ForeignColumns: []drivers.ForeignKeyColumn{{Name: "id"}}},
 		},
 	}[tableName], nil
 }

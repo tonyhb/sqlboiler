@@ -386,8 +386,6 @@ func (p *PostgresDriver) PrimaryKeyInfo(schema, tableName string) (*drivers.Prim
 
 // ForeignKeyInfo retrieves the foreign keys for a given table name.
 func (p *PostgresDriver) ForeignKeyInfo(schema, tableName string) ([]drivers.ForeignKey, error) {
-	var fkeys []drivers.ForeignKey
-
 	whereConditions := []string{"pgn.nspname = $2", "pgc.relname = $1", "pgcon.contype = 'f'"}
 	if p.version >= 120000 {
 		whereConditions = append(whereConditions, "pgasrc.attgenerated = ''", "pgadst.attgenerated = ''")
@@ -417,21 +415,37 @@ func (p *PostgresDriver) ForeignKeyInfo(schema, tableName string) ([]drivers.For
 		return nil, err
 	}
 
+	mapping := map[string]drivers.ForeignKey{}
 	for rows.Next() {
 		var fkey drivers.ForeignKey
-		var sourceTable string
+		var sourceTable, column, foreignColumn string
 
 		fkey.Table = tableName
-		err = rows.Scan(&fkey.Name, &sourceTable, &fkey.Column, &fkey.ForeignTable, &fkey.ForeignColumn)
+		err = rows.Scan(&fkey.Name, &sourceTable, &column, &fkey.ForeignTable, &foreignColumn)
 		if err != nil {
 			return nil, err
 		}
 
-		fkeys = append(fkeys, fkey)
+		if existing, ok := mapping[fkey.Name]; ok {
+			// This is a composite foreign key and so we have a local to foreign key pair to append
+			existing.Columns = append(existing.Columns, drivers.ForeignKeyColumn{Name: column})
+			existing.ForeignColumns = append(existing.Columns, drivers.ForeignKeyColumn{Name: foreignColumn})
+		} else {
+			fkey.Columns = []drivers.ForeignKeyColumn{{Name: column}}
+			fkey.ForeignColumns = []drivers.ForeignKeyColumn{{Name: foreignColumn}}
+			mapping[fkey.Name] = fkey
+		}
 	}
 
 	if err = rows.Err(); err != nil {
 		return nil, err
+	}
+
+	fkeys := make([]drivers.ForeignKey, len(mapping))
+	i := 0
+	for _, fkey := range mapping {
+		fkeys[i] = fkey
+		i++
 	}
 
 	return fkeys, nil

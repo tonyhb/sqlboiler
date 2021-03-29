@@ -154,9 +154,11 @@ func setIsJoinTable(t *Table) {
 	for _, c := range t.PKey.Columns {
 		found := false
 		for _, f := range t.FKeys {
-			if c == f.Column {
-				found = true
-				break
+			for _, fkColumn := range f.Columns {
+				if c == fkColumn.Name {
+					found = true
+					break
+				}
 			}
 		}
 		if !found {
@@ -169,14 +171,18 @@ func setIsJoinTable(t *Table) {
 
 func setForeignKeyConstraints(t *Table, tables []Table) {
 	for i, fkey := range t.FKeys {
-		localColumn := t.GetColumn(fkey.Column)
-		foreignTable := GetTable(tables, fkey.ForeignTable)
-		foreignColumn := foreignTable.GetColumn(fkey.ForeignColumn)
+		for n, lc := range fkey.Columns {
+			localColumn := t.GetColumn(lc.Name)
+			t.FKeys[i].Columns[n].Nullable = localColumn.Nullable
+			t.FKeys[i].Columns[n].Unique = localColumn.Unique
+		}
 
-		t.FKeys[i].Nullable = localColumn.Nullable
-		t.FKeys[i].Unique = localColumn.Unique
-		t.FKeys[i].ForeignColumnNullable = foreignColumn.Nullable
-		t.FKeys[i].ForeignColumnUnique = foreignColumn.Unique
+		foreignTable := GetTable(tables, fkey.ForeignTable)
+		for n, fc := range fkey.ForeignColumns {
+			foreignColumn := foreignTable.GetColumn(fc.Name)
+			t.FKeys[i].ForeignColumns[n].Nullable = foreignColumn.Nullable
+			t.FKeys[i].ForeignColumns[n].Unique = foreignColumn.Unique
+		}
 	}
 }
 
