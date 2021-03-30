@@ -8,10 +8,12 @@
 // {{$relAlias.Local}} pointed to by the foreign key.
 func (o *{{$ltable.UpSingular}}) {{$relAlias.Local}}(mods ...qm.QueryMod) ({{$ftable.DownSingular}}Query) {
 	queryMods := []qm.QueryMod{
-		qm.Where("{{$rel.ForeignColumn | $.Quotes}} = ?", o.{{$ltable.Column $rel.Column}}),
-        {{if and $.AddSoftDeletes $canSoftDelete -}}
-        qmhelper.WhereIsNull("deleted_at"),
-        {{- end}}
+		{{- range $idx, $col := $fkey.ForeignColumns -}}
+			qm.Where("{{$rel.ForeignColumns[$idx].Name | $.Quotes}} = ?", o.{{$ltable.Column $rel.Columns[$idx].Name}}),
+			{{if and $.AddSoftDeletes $canSoftDelete -}}
+			qmhelper.WhereIsNull("deleted_at"),
+			{{- end}}
+		{{- end}}
 	}
 
 	queryMods = append(queryMods, mods...)

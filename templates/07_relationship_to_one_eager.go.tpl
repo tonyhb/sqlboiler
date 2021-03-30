@@ -5,10 +5,7 @@
 		{{- $ftable := $.Aliases.Table $fkey.ForeignTable -}}
 		{{- $rel := $ltable.Relationship $fkey.Name -}}
 		{{- $arg := printf "maybe%s" $ltable.UpSingular -}}
-		{{- $col := $ltable.Column $fkey.Column -}}
-		{{- $fcol := $ftable.Column $fkey.ForeignColumn -}}
-		{{- $usesPrimitives := usesPrimitives $.Tables $fkey.Table $fkey.Column $fkey.ForeignTable $fkey.ForeignColumn -}}
-		{{- $canSoftDelete := (getTable $.Tables $fkey.ForeignTable).CanSoftDelete }}
+
 // Load{{$rel.Foreign}} allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func ({{$ltable.DownSingular}}L) Load{{$rel.Foreign}}({{if $.NoContext}}e boil.Executor{{else}}ctx context.Context, e boil.ContextExecutor{{end}}, singular bool, {{$arg}} interface{}, mods queries.Applicator) error {
@@ -21,12 +18,22 @@ func ({{$ltable.DownSingular}}L) Load{{$rel.Foreign}}({{if $.NoContext}}e boil.E
 		slice = *{{$arg}}.(*[]*{{$ltable.UpSingular}})
 	}
 
-	args := make([]interface{}, 0, 1)
+
+	args := map[string][]interface{}{}
+
+	{{- range $idx, $col := $fkey.Columns -}}
+
+		{{- $col := $ltable.Column $fkey.Columns[$idx].Name -}}
+		{{- $fcol := $ftable.Column $fkey.ForeignColumns[$idx].Name -}}
+		{{- $usesPrimitives := usesPrimitives $.Tables $fkey.Table $fkey.Columns[$idx].Name $fkey.ForeignTable $fkey.ForeignColumns[$idx].Name -}}
+		{{- $canSoftDelete := (getTable $.Tables $fkey.ForeignTable).CanSoftDelete }}
+
 	if singular {
 		if object.R == nil {
 			object.R = &{{$ltable.DownSingular}}R{}
 		}
 		{{if $usesPrimitives -}}
+		u
 		args = append(args, object.{{$col}})
 		{{else -}}
 		if !queries.IsNil(object.{{$col}}) {
@@ -60,17 +67,24 @@ func ({{$ltable.DownSingular}}L) Load{{$rel.Foreign}}({{if $.NoContext}}e boil.E
 		}
 	}
 
+	{{- end -}}
+
 	if len(args) == 0 {
 		return nil
 	}
 
 	query := NewQuery(
 	    qm.From(`{{if $.Dialect.UseSchema}}{{$.Schema}}.{{end}}{{.ForeignTable}}`),
-	    qm.WhereIn(`{{if $.Dialect.UseSchema}}{{$.Schema}}.{{end}}{{.ForeignTable}}.{{.ForeignColumn}} in ?`, args...),
 	    {{if and $.AddSoftDeletes $canSoftDelete -}}
 	    qmhelper.WhereIsNull(`{{if $.Dialect.UseSchema}}{{$.Schema}}.{{end}}{{.ForeignTable}}.deleted_at`),
 	    {{- end}}
-    )
+	)
+
+	for k, v := range args {
+		// TODO
+		qm.WhereIn(`{{if $.Dialect.UseSchema}}{{$.Schema}}.{{end}}{{.ForeignTable}}.{{$col.Name}} in ?`, args...),
+	}
+
 	if mods != nil {
 		mods.Apply(query)
 	}
@@ -128,24 +142,34 @@ func ({{$ltable.DownSingular}}L) Load{{$rel.Foreign}}({{if $.NoContext}}e boil.E
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
+			{{ /* iterate through each foreign ke column and check if the item matches */ }}
+			{{- range $idx, $col := $fkey.Columns -}}
+			{{- $col := $ltable.Column $fkey.Columns[$idx].Name -}}
+			{{- $fcol := $ftable.Column $fkey.ForeignColumns[$idx].Name -}}
+			{{- $usesPrimitives := usesPrimitives $.Tables $fkey.Table $fkey.Columns[$idx].Name $fkey.ForeignTable $fkey.ForeignColumns[$idx].Name -}}
+
 			{{if $usesPrimitives -}}
-			if local.{{$col}} == foreign.{{$fcol}} {
-			{{else -}}
-			if queries.Equal(local.{{$col}}, foreign.{{$fcol}}) {
-			{{end -}}
-				local.R.{{$rel.Foreign}} = foreign
-				{{if not $.NoBackReferencing -}}
-				if foreign.R == nil {
-					foreign.R = &{{$ftable.DownSingular}}R{}
-				}
-					{{if $fkey.Unique -}}
-				foreign.R.{{$rel.Local}} = local
-					{{else -}}
-				foreign.R.{{$rel.Local}} = append(foreign.R.{{$rel.Local}}, local)
-					{{end -}}
-				{{end -}}
-				break
+			if local.{{$col}} != foreign.{{$fcol}} {
+				continue
 			}
+			{{else -}}
+			if !queries.Equal(local.{{$col}}, foreign.{{$fcol}}) {
+				continue
+			}
+			{{end -}}
+
+			local.R.{{$rel.Foreign}} = foreign
+			{{if not $.NoBackReferencing -}}
+			if foreign.R == nil {
+				foreign.R = &{{$ftable.DownSingular}}R{}
+			}
+				{{if $fkey.Unique -}}
+			foreign.R.{{$rel.Local}} = local
+				{{else -}}
+			foreign.R.{{$rel.Local}} = append(foreign.R.{{$rel.Local}}, local)
+				{{end -}}
+			{{end -}}
+			break
 		}
 	}
 
